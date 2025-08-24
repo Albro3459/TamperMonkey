@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Canvas Kaltura video settings
 // @namespace    http://tampermonkey.net/
-// @version      2025-08-22
+// @version      2025-08-24
 // @description  Set user settings
 // @author       Brod
 // @match        https://cdnapisec.kaltura.com/*
@@ -17,27 +17,21 @@
 
     const speedKey$ = "playback_speed";
 
-    console.log("*** LOADED");
-
     function setPlaybackSpeed$(speed) {
         localStorage.setItem(speedKey$, speed); // gets stored as a string
-        console.log("*** Set speed: " + speed);
     }
 
     function getPlaybackSpeed$() {
         const speed = parseFloat(localStorage.getItem(speedKey$) || "");
         if (!isNaN(speed)) {
-            console.log("*** Found local storage speed: " + speed);
             return speed;
         }
         else {
-            console.log("*** Local storage speed NOT found. Setting and returning...: " + speed);
             setPlaybackSpeed$(defaultSpeed$);
             return defaultSpeed$;
         }
     }
 
-    // NO OPTIONAL CHAINING
     kWidget.addReadyCallback(playerId => {
         const kdp = document.getElementById(playerId);
 
@@ -45,11 +39,23 @@
 
         kdp.kBind("playerReady", () => {
             kdp.kBind("playing", event => {
-                console.log("*** Sending speed notification");
-                kdp.sendNotification('playbackRateChangeSpeed', getPlaybackSpeed$());
+                const video = document.querySelector("video.persistentNativePlayer");
+                if (video) {
+                    const speed = getPlaybackSpeed$();
+                    if (speed !== video.playbackRate) {
+                        kdp.sendNotification('playbackRateChangeSpeed', getPlaybackSpeed$());
+
+                        // restore focus back to the video element
+                        setTimeout(() => {
+                            if (document.activeElement) {
+                                document.activeElement.blur();
+                            }
+                            video.setAttribute("tabindex", "-1");
+                            video.focus();
+                        }, 50);
+                    } 
+                }                
             });
         });
     });
-
-    console.log("*** DONE");
 })();
