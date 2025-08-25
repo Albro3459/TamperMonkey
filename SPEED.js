@@ -22,7 +22,7 @@
     }
 
     function getPlaybackSpeed$() {
-        const speed = parseFloat(localStorage.getItem(speedKey$) || "");
+        const speed = parseFloat(localStorage.getItem(speedKey$) || "");  // gets stored as a string
         if (!isNaN(speed)) {
             return speed;
         }
