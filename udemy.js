@@ -33,3 +33,55 @@
     // Save to cookies for when this or the next video loads
     document.cookie = "playbackspeed=1.75; path=/;";
 })();
+
+
+
+// Make checkboxes selectable
+function fixCheckboxes() {
+    // Where ID like "popper-trigger--%"
+    const elems = document.querySelectorAll('div[id^="popper-trigger--"]'); // from id
+
+    elems.forEach(e => {
+        const label = e.querySelector('label');
+        const input = label.querySelector('input');
+
+        // Enable toggle
+        label?.classList.remove('ud-toggle-input-disabled');
+        label?.classList.add('ud-toggle-input');
+
+        // Enable input
+        input?.removeAttribute('disabled');
+    });
+
+    // Stop annoying popups onHover
+    const style = document.createElement("style");
+    style.textContent = `
+        div[class^="popper-module--popper-content--"] [class*="tooltip-module--tooltip--"] {
+            display: none !important;
+        }`;
+    document.head.appendChild(style);
+}
+
+setTimeout(() => {
+    fixCheckboxes();
+
+    // Watch for section open/close
+    const observer = new MutationObserver(mutations => {
+        for (const m of mutations) {
+            if (m.type === 'attributes' && m.attributeName === 'data-checked') {
+                if (m.target.getAttribute('data-checked') === 'checked') {
+                    // New section just opened
+                    fixCheckboxes();
+                }
+            }
+        }
+    });
+
+    // Attach observer to the whole body, watching for data-checked to flip
+    observer.observe(document.body, {
+        attributes: true,
+        subtree: true,
+        attributeFilter: ['data-checked']
+    });
+
+}, 2000);
