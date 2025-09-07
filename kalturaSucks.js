@@ -1,10 +1,11 @@
 // ==UserScript==
-// @name         Canvas Kaltura video settings
+// @name         Kaltura Video Settings & Logo Update
 // @namespace    http://tampermonkey.net/
 // @version      2025-08-24
 // @description  Set user settings
 // @author       Brod
 // @match        https://cdnapisec.kaltura.com/*
+// @match        https://www.kaltura.com/*
 // @match        https://gatech.instructure.com/courses/*/pages/*-playlist*
 // @grant        none
 // ==/UserScript==
@@ -53,9 +54,30 @@
                             video.setAttribute("tabindex", "-1");
                             video.focus();
                         }, 50);
-                    } 
-                }                
+                    }
+                }
             });
         });
     });
+})();
+
+// Update the Kaltura Logo on the video to open the playlist in its own window
+(() => {
+    // This runs inside the Kaltura video player, so the window.location.href is actually the URL of the Kaltura player 
+    const url = window.location.href;
+
+    const observer = new MutationObserver((mutations, obs) => {
+        const logo = document.querySelector('.kaltura-logo a.btnFixed');
+        if (logo) {
+            logo.addEventListener('click', function(e) {
+                e.stopImmediatePropagation();
+                e.preventDefault();
+                window.open(url, '_blank');
+            }, true);
+
+            obs.disconnect(); // stop watching once hooked
+        }
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
 })();
