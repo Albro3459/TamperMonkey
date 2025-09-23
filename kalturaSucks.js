@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         Kaltura Video Settings & Logo Update
+// @name         Kaltura Hacks
 // @namespace    http://tampermonkey.net/
 // @version      2025-08-24
-// @description  Set user settings
+// @description  Save playback rate, add F7 & F9 as shortcuts to skip forward and back, and made the Kaltura icon open the media player in itws own full window
 // @author       Brod
 // @match        https://cdnapisec.kaltura.com/*
 // @match        https://www.kaltura.com/*
@@ -58,6 +58,36 @@
                 }
             });
         });
+    });
+})();
+
+// Add F7 (back) and F9 (forward) as shortcuts to go back and skip forward a video
+(() => {
+    kWidget.addReadyCallback(playerId => {
+        const kdp = document.getElementById(playerId);
+        if (!kdp) return;
+
+        document.addEventListener("keydown", e => {
+            if (["INPUT", "TEXTAREA"].includes(document.activeElement.tagName)) return;
+
+            if (e.key === "F7") {
+                kdp.sendNotification("playlistPlayPrevious");
+                e.preventDefault();
+            }
+            if (e.key === "F9") {
+                kdp.sendNotification("playlistPlayNext");
+                e.preventDefault();
+            }
+        });
+
+        if ("mediaSession" in navigator) {
+            navigator.mediaSession.setActionHandler("previoustrack", () => {
+                kdp.sendNotification("playlistPlayPrevious");
+            });
+            navigator.mediaSession.setActionHandler("nexttrack", () => {
+                kdp.sendNotification("playlistPlayNext");
+            });
+        }
     });
 })();
 
