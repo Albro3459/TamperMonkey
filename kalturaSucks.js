@@ -171,7 +171,7 @@
             // Always reset to the "X video(s)" base text
             const baseMatch = playlistEl.textContent.match(/^\d+\s+videos?/i);
             const baseText = baseMatch ? baseMatch[0] : playlistEl.textContent;
-            playlistEl.textContent = `${baseText} (${totalTime}) remaining`;
+            playlistEl.textContent = `${baseText} (${totalTime} remaining)`;
         }
     };
 
@@ -240,8 +240,8 @@
         return playlist?.content?.findIndex(item => item?.id === currentID) ?? -1;
     }
 
-    function switchToVideo(kdp, playlist, index) {
-        if (index >= 0 && index < playlist?.content?.length) {
+    function switchToVideo(playlist, index) {
+        if (index > 0 && index < playlist?.content?.length) {
 
             const playlistRoot = document.querySelector(".playlistInterface");
             if (!playlistRoot) {
@@ -251,6 +251,11 @@
             const lis = playlistRoot.querySelectorAll("li[data-mediabox-index]");
             for (let li of lis) {
                 if (li.getAttribute("data-mediabox-index") === index.toString()) {
+                    li.scrollIntoView({
+                        behavior: "smooth",
+                        block: "nearest",
+                        inline: "nearest"
+                    });
                     li.click();
                     return;
                 }
@@ -258,11 +263,11 @@
         }
     }
 
-    function waitAndSwitch(kdp, playlist, index, tries = 5) {
+    function waitAndSwitch(playlist, index, tries = 5) {
         if (playlist?.content[index]) {
-            switchToVideo(kdp, playlist, index);
+            switchToVideo(playlist, index);
         } else if (tries > 0) {
-            setTimeout(() => waitAndSwitch(kdp, playlist, index, tries - 1), 500);
+            setTimeout(() => waitAndSwitch(playlist, index, tries - 1), 500);
         }
     }
 
@@ -271,8 +276,8 @@
         if (!playlist) return null;
 
         const index = getStoredCurrentVideoIndex(playlist?.id);
-        if (index > 0) {
-            waitAndSwitch(kdp, playlist, index);
+        if (index > 0 && index < playlist?.content?.length) {
+            waitAndSwitch(playlist, index);
         }
 
         return playlist;
