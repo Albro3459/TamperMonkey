@@ -128,23 +128,29 @@
     function getTotalPlaybackTimeString(kdp, video) {
         try {
             let playlist = kdp.evaluate('{playlistAPI.dataProvider}').content[0].items;
+            const playlistLength = playlist.length;
 
-            const currentId = kdp.kalturaPlayerMetaData.id; 
-            let currentIndex = playlist?.findIndex(item => item.id === currentId);
+            const currentId = kdp.kalturaPlayerMetaData.id;
+            const index = playlist?.findIndex(item => item.id === currentId);
+            let currentIndex = index;
 
             const videoTime = getVideoTimeRemaining(video);
-            if (videoTime >= 0 && currentIndex >= 0 && currentIndex < playlist.length - 1) {
+            if (videoTime >= 0 && currentIndex >= 0 && currentIndex < playlistLength - 1) {
                 // only skip video if the video exists and not the last video
                 currentIndex++;
             }
 
-            if (currentIndex > 0 && currentIndex < playlist.length) {
+            if (currentIndex > 0 && currentIndex < playlistLength) {
                 playlist = playlist.slice(currentIndex);
             }
 
             let totalDurationSeconds = playlist.reduce((total, item) => { return total + item.duration; }, 0);
             if (videoTime >= 0) {
-                totalDurationSeconds += videoTime;
+                if (index === playlistLength - 1) {
+                    totalDurationSeconds = videoTime;
+                } else {
+                    totalDurationSeconds += videoTime;
+                }
             }
 
             return formatDuration(totalDurationSeconds);
@@ -156,12 +162,12 @@
 
     const updatePlaybackTime = (kdp, video) => {
         // Waits for the playlist description to load, and then shows the time
-            
+
         const playlistEl = document.querySelector(".playlistDescription");
 
         if (playlistEl) {
             const totalTime = getTotalPlaybackTimeString(kdp, video);
-            
+
             // Always reset to the "X video(s)" base text
             const baseMatch = playlistEl.textContent.match(/^\d+\s+videos?/i);
             const baseText = baseMatch ? baseMatch[0] : playlistEl.textContent;
@@ -279,6 +285,7 @@
             if (isFirstLoad) {
                 isFirstLoad = false;
                 playlist = checkForVideoToSwitch(kdp);
+                return;
             } else {
                 playlist = getCurrentPlaylist(kdp);
             }
@@ -312,7 +319,7 @@
 
 // Update the Kaltura Logo on the video to open the playlist in its own window
 (() => {
-    // This runs inside the Kaltura video player, so the window.location.href is actually the URL of the Kaltura player 
+    // This runs inside the Kaltura video player, so the window.location.href is actually the URL of the Kaltura player
     const url = window.location.href;
 
     const observer = new MutationObserver((mutations, obs) => {
