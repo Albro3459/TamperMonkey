@@ -11,5 +11,5 @@ In Chrome Manage TamperMonkey Manage Extension, turn on Developer Mode and Allow
 [kWidget PlayerAPI docs](https://police.dokgong.com/plugin/mwEmbed/docs/index.php?path=api#kdpAPI)
 
 Other docs but these are not really accurate and are for the new player, not the old kWidget PlayerAPI
-[PlaylistAPI](https://developer.kaltura.com/player/web/api-web#playlistmanager)
-[Player](https://developer.kaltura.com/player/web/playlist-web)
+ * [PlaylistAPI](https://developer.kaltura.com/player/web/api-web#playlistmanager)
+ * [Player](https://developer.kaltura.com/player/web/playlist-web)
