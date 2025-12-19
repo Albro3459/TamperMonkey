@@ -8,14 +8,10 @@
 // @grant        none
 // ==/UserScript==
 
-let sidebarStyle$;
+let sidebarStyle$ = null;
+let sidebarVisible$ = true;
 
 (function () {
-    const el = document.querySelector('.sidebarToggle');
-    if (el) {
-        el.className = 'sidebarToggle'; // start clean
-    }
-
     function hideSidebar() {
         const css = `
             @media (min-width: 0px) {
@@ -64,11 +60,7 @@ let sidebarStyle$;
         sidebarStyle$.textContent = css;
         document.documentElement.appendChild(sidebarStyle$);
 
-        // add disabled
-        const el = document.querySelector('.sidebarToggle');
-        if (el) {
-            el.className = 'sidebarToggle disabled';
-        }
+        sidebarVisible$ = false;
     }
 
     function showSidebar() {
@@ -77,11 +69,7 @@ let sidebarStyle$;
             sidebarStyle$ = null;
         }
 
-        // remove disabled
-        const el = document.querySelector('.sidebarToggle');
-        if (el) {
-            el.className = 'sidebarToggle';
-        }
+        sidebarVisible$ = true;
     }
 
     function toggleSidebar(show = false) {
@@ -92,32 +80,27 @@ let sidebarStyle$;
         }
     }
 
-    function isSidebarDisabled() {
-        return document.querySelector('.sidebarToggle.disabled') !== null;
-    }
+    // Remove the sidebar ad
+    const ad = document.querySelector('#sidebar-footer');
+    ad?.remove();
+
+    // Start hidden
+    toggleSidebar(false);
 
     const sidebar = document.querySelector('[data-tippy-simple-content="Collapse sidebar"]');
     if (!sidebar) {
-        // console.log("*** NO TOOLTIP ***");
-        toggleSidebar(false);
-    } else {
+        console.log("*** NO SIDEBAR BUTTON ***");
+    } 
+    else {
         // Remove the (PRO) bubble on the tooltip:
         sidebar.removeAttribute('data-tippy-pro');
 
-        document.addEventListener(
-            "click",
-            (e) => {
-                if (sidebar) {
-                    e.stopImmediatePropagation();
-                    e.preventDefault();
+        sidebar.addEventListener("click", (e) => {
+            e.stopImmediatePropagation();
+            e.preventDefault();
 
-                    toggleSidebar(isSidebarDisabled());
-                } else {
-                    // console.log("*** NO SIDEBAR TOGGLE ***");
-                }
-            },
-            true
-        );
+            toggleSidebar(!sidebarVisible$);
+        });
     }
 
 })();
