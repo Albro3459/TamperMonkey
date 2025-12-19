@@ -4,7 +4,7 @@
 // @version      12/19/2025
 // @description  Hide JSFiddle Sidebar
 // @author       Don't Worry About It Shawty
-// @match        https://jsfiddle.net/
+// @match        https://jsfiddle.net/*
 // @grant        none
 // ==/UserScript==
 
@@ -38,20 +38,6 @@ let sidebarVisible$ = true;
 
                 body #sidebar #sidebar-footer,body #sidebar #sidebar-main,body #sidebar #sidebar-user,body .headerActions li.collaborateButton,body .headerActions li.divider,body .headerActions li.downloadButton,body .headerActions li.embedButton,body .headerActions li.favButton,body .headerActions li.gridButton,body .headerActions li.proButton,body .headerActions li.themeButton,body .headerActions li.togglePrivacy {
                     display: none
-                }
-
-                body .modalBody {
-                    align-items: start
-                }
-
-                body .modalApp {
-                    min-width: auto;
-                    height: auto;
-                    min-height: auto
-                }
-
-                body #editor-options .fieldsCont {
-                    grid-template-columns: 1fr 1fr
                 }
             }
         `;
@@ -90,7 +76,7 @@ let sidebarVisible$ = true;
     const sidebar = document.querySelector('[data-tippy-simple-content="Collapse sidebar"]');
     if (!sidebar) {
         console.log("*** NO SIDEBAR BUTTON ***");
-    } 
+    }
     else {
         // Remove the (PRO) bubble on the tooltip:
         sidebar.removeAttribute('data-tippy-pro');
