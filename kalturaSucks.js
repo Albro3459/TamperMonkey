@@ -3,7 +3,7 @@
 // @namespace    http://tampermonkey.net/
 // @version      2025-09-25
 // @description  Save current Kaltura video, playback rate, add the remaining playlist duration, add F7 & F9 as shortcuts to skip forward and back, and made the Kaltura icon open the media player in its own full window
-// @author       Brod
+// @author       Don't Worry About It Shawty
 // @match        https://cdnapisec.kaltura.com/*
 // @match        https://www.kaltura.com/*
 // @match        https://gatech.instructure.com/courses/*/pages/*-playlist*
