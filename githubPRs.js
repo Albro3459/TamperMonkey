@@ -13,7 +13,12 @@
 
     let lastTitleBranchName = "";
     let formUpdateScheduled = false;
+    let domUpdateScheduled = false;
     const formUpdateDelays = [0, 100, 250, 500, 1000, 2000, 4000];
+    const comparePullRequestLabel = "Compare & pull request";
+    const comparePullRequestLinkSelector = 'a[data-component="LinkButton"][href*="/compare/"]';
+    const processedLinkHrefs = new WeakMap();
+    const pendingLinkRoots = new Set();
 
     function cleanBranchName(branchName) {
         if (!branchName) return "";
@@ -26,49 +31,51 @@
         const match = pathname.match(/^\/[^/]+\/[^/]+\/compare\/(.+)$/);
 
         if (!match) {
-            console.log("**** No compare path match:", pathname);
+            // console.log("**** No compare path match:", pathname);
             return "";
         }
 
         try {
             const branchName = cleanBranchName(decodeURIComponent(match[1]));
-            console.log("**** Extracted branch name:", branchName);
+            // console.log("**** Extracted branch name:", branchName);
             return branchName;
         } catch (err) {
-            console.error("**** Failed to decode branch name", err);
+            // console.error("**** Failed to decode branch name", err);
             return "";
         }
     }
 
     function updateComparePullRequestLink(link) {
-        const label = link.textContent.trim().replace(/\s+/g, " ");
-
-        if (label !== "Compare & pull request") return;
-
-        console.log("**** Found Compare & pull request link:", link);
-
         const href = link.getAttribute("href");
 
         if (!href) {
-            console.log("**** Skipping link with no href");
+            // console.log("**** Skipping link with no href");
             return;
         }
 
-        console.log("**** Original href:", href);
+        if (processedLinkHrefs.get(link) === href) return;
+
+        const label = link.textContent.trim().replace(/\s+/g, " ");
+
+        if (label !== comparePullRequestLabel) return;
+
+        // console.log("**** Found Compare & pull request link:", link);
+
+        // console.log("**** Original href:", href);
 
         let url;
 
         try {
             url = new URL(href, window.location.origin);
         } catch (err) {
-            console.error("**** Failed to parse URL", err);
+            // console.error("**** Failed to parse URL", err);
             return;
         }
 
         const branchName = getBranchName(url.pathname);
 
         if (!branchName) {
-            console.log("**** Skipping because no branch name was found");
+            // console.log("**** Skipping because no branch name was found");
             return;
         }
 
@@ -80,11 +87,12 @@
 
         const newHref = `${url.pathname}?${url.searchParams.toString()}`;
 
-        console.log("**** Rewriting URL");
-        console.log("**** Before:", originalUrl);
-        console.log("**** After :", newHref);
+        // console.log("**** Rewriting URL");
+        // console.log("**** Before:", originalUrl);
+        // console.log("**** After :", newHref);
 
         link.href = newHref;
+        processedLinkHrefs.set(link, link.getAttribute("href") || newHref);
     }
 
     function getBranchNameFromPullRequestForm() {
@@ -102,7 +110,7 @@
         try {
             url = new URL(action, window.location.origin);
         } catch (err) {
-            console.error("**** Failed to parse PR form action", err);
+            // console.error("**** Failed to parse PR form action", err);
             return "";
         }
 
@@ -138,9 +146,9 @@
 
         if (titleInput.value === branchName) return;
 
-        console.log("**** Updating PR title");
-        console.log("**** Before:", titleInput.value);
-        console.log("**** After :", branchName);
+        // console.log("**** Updating PR title");
+        // console.log("**** Before:", titleInput.value);
+        // console.log("**** After :", branchName);
 
         setInputValue(titleInput, branchName);
     }
@@ -152,7 +160,7 @@
         if (bodyInput.dataset.brodCleared === "true") return;
         if (!bodyInput.value) return;
 
-        console.log("**** Clearing PR description:", bodyInput.value);
+        // console.log("**** Clearing PR description:", bodyInput.value);
 
         setInputValue(bodyInput, "");
         bodyInput.dataset.brodCleared = "true";
@@ -183,22 +191,53 @@
         return button.textContent.trim().replace(/\s+/g, " ") === "Create pull request";
     }
 
-    function updateComparePullRequestLinks() {
-        const links = document.querySelectorAll('a[data-component="LinkButton"]');
+    function scanComparePullRequestLinks(root) {
+        if (root instanceof HTMLAnchorElement && root.matches(comparePullRequestLinkSelector)) {
+            updateComparePullRequestLink(root);
+            return;
+        }
 
-        console.log(`**** Scanning ${links.length} LinkButton elements`);
+        if (!(root instanceof Element || root instanceof Document)) return;
+
+        const links = root.querySelectorAll(comparePullRequestLinkSelector);
+
+        // console.log(`**** Scanning ${links.length} LinkButton elements`);
 
         links.forEach(updateComparePullRequestLink);
+    }
+
+    function updateComparePullRequestLinks() {
+        scanComparePullRequestLinks(document);
         updatePullRequestForm();
     }
 
-    console.log("**** Script initialized");
-    console.log("**** Current URL:", location.href);
+    function queueDomUpdate(root) {
+        if (root) pendingLinkRoots.add(root);
+        if (domUpdateScheduled) return;
+
+        domUpdateScheduled = true;
+
+        requestAnimationFrame(() => {
+            domUpdateScheduled = false;
+
+            pendingLinkRoots.forEach(scanComparePullRequestLinks);
+            pendingLinkRoots.clear();
+
+            updatePullRequestForm();
+
+            if (lastTitleBranchName) {
+                schedulePullRequestFormUpdates();
+            }
+        });
+    }
+
+    // console.log("**** Script initialized");
+    // console.log("**** Current URL:", location.href);
 
     updateComparePullRequestLinks();
 
     document.addEventListener("turbo:load", () => {
-        console.log("**** turbo:load fired");
+        // console.log("**** turbo:load fired");
         updateComparePullRequestLinks();
     });
 
@@ -209,29 +248,41 @@
         const button = target.closest("button");
         if (!button || !isCreatePullRequestButton(button)) return;
 
-        console.log("**** Create pull request button clicked");
+        // console.log("**** Create pull request button clicked");
         schedulePullRequestFormUpdates();
     }, true);
 
     function watchForComparePullRequestLinks() {
         if (!document.body) {
-            console.log("**** document.body not ready, retrying...");
+            // console.log("**** document.body not ready, retrying...");
             setTimeout(watchForComparePullRequestLinks, 250);
             return;
         }
 
-        console.log("**** Starting MutationObserver");
+        // console.log("**** Starting MutationObserver");
 
         const observer = new MutationObserver((mutations) => {
-            console.log(`**** MutationObserver triggered (${mutations.length} mutations)`);
-            updateComparePullRequestLinks();
+            // console.log(`**** MutationObserver triggered (${mutations.length} mutations)`);
+            mutations.forEach(mutation => {
+                if (mutation.type === "attributes" && mutation.target instanceof Element) {
+                    queueDomUpdate(mutation.target);
+                }
 
-            if (lastTitleBranchName) {
-                schedulePullRequestFormUpdates();
-            }
+                mutation.addedNodes.forEach(node => {
+                    if (node instanceof Element) {
+                        queueDomUpdate(node);
+                    } else if (node.parentElement) {
+                        queueDomUpdate(node.parentElement);
+                    }
+                });
+            });
+
+            queueDomUpdate();
         });
 
         observer.observe(document.body, {
+            attributes: true,
+            attributeFilter: ["href"],
             childList: true,
             subtree: true
         });
