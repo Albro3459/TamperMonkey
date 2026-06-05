@@ -11,6 +11,17 @@
 (function () {
     "use strict";
 
+    let lastTitleBranchName = "";
+    let formUpdateScheduled = false;
+    const formUpdateDelays = [0, 100, 250, 500, 1000, 2000, 4000];
+
+    function cleanBranchName(branchName) {
+        if (!branchName) return "";
+
+        const headBranchName = branchName.split("...").pop();
+        return headBranchName.split(":").pop();
+    }
+
     function getBranchName(pathname) {
         const match = pathname.match(/^\/[^/]+\/[^/]+\/compare\/(.+)$/);
 
@@ -20,7 +31,7 @@
         }
 
         try {
-            const branchName = decodeURIComponent(match[1]);
+            const branchName = cleanBranchName(decodeURIComponent(match[1]));
             console.log("**** Extracted branch name:", branchName);
             return branchName;
         } catch (err) {
@@ -76,12 +87,109 @@
         link.href = newHref;
     }
 
+    function getBranchNameFromPullRequestForm() {
+        const paramsBranchName = cleanBranchName(new URLSearchParams(window.location.search).get("title"));
+        if (paramsBranchName) return paramsBranchName;
+
+        const comparePathBranchName = getBranchName(window.location.pathname);
+        if (comparePathBranchName) return comparePathBranchName;
+
+        const form = document.querySelector("form#new_pull_request");
+        const action = form?.getAttribute("action");
+        if (!action) return "";
+
+        let url;
+        try {
+            url = new URL(action, window.location.origin);
+        } catch (err) {
+            console.error("**** Failed to parse PR form action", err);
+            return "";
+        }
+
+        const head = url.searchParams.get("head");
+        return cleanBranchName(head);
+    }
+
+    function setInputValue(input, value) {
+        const valueSetter = Object.getOwnPropertyDescriptor(input, "value")?.set;
+        const prototype = input instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+        const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, "value")?.set;
+
+        if (prototypeValueSetter && valueSetter !== prototypeValueSetter) {
+            prototypeValueSetter.call(input, value);
+        } else if (valueSetter) {
+            valueSetter.call(input, value);
+        } else {
+            input.value = value;
+        }
+
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+    }
+
+    function updatePullRequestTitle() {
+        const titleInput = document.querySelector('input[name="pull_request[title]"]');
+        if (!titleInput) return;
+
+        const branchName = getBranchNameFromPullRequestForm();
+        if (!branchName) return;
+
+        lastTitleBranchName = branchName;
+
+        if (titleInput.value === branchName) return;
+
+        console.log("**** Updating PR title");
+        console.log("**** Before:", titleInput.value);
+        console.log("**** After :", branchName);
+
+        setInputValue(titleInput, branchName);
+    }
+
+    function updatePullRequestDescription() {
+        const bodyInput = document.querySelector('textarea[name="pull_request[body]"]');
+        if (!bodyInput) return;
+
+        if (bodyInput.dataset.brodCleared === "true") return;
+        if (!bodyInput.value) return;
+
+        console.log("**** Clearing PR description:", bodyInput.value);
+
+        setInputValue(bodyInput, "");
+        bodyInput.dataset.brodCleared = "true";
+    }
+
+    function updatePullRequestForm() {
+        updatePullRequestTitle();
+        updatePullRequestDescription();
+    }
+
+    function schedulePullRequestFormUpdates() {
+        if (formUpdateScheduled) return;
+
+        formUpdateScheduled = true;
+
+        formUpdateDelays.forEach(delay => {
+            setTimeout(() => {
+                updatePullRequestForm();
+
+                if (delay === formUpdateDelays[formUpdateDelays.length - 1]) {
+                    formUpdateScheduled = false;
+                }
+            }, delay);
+        });
+    }
+
+    function isCreatePullRequestButton(button) {
+        return button.textContent.trim().replace(/\s+/g, " ") === "Create pull request";
+    }
+
     function updateComparePullRequestLinks() {
         const links = document.querySelectorAll('a[data-component="LinkButton"]');
 
         console.log(`**** Scanning ${links.length} LinkButton elements`);
 
         links.forEach(updateComparePullRequestLink);
+        updatePullRequestForm();
     }
 
     console.log("**** Script initialized");
@@ -93,6 +201,17 @@
         console.log("**** turbo:load fired");
         updateComparePullRequestLinks();
     });
+
+    document.addEventListener("click", event => {
+        const target = event.target;
+        if (!(target instanceof Element)) return;
+
+        const button = target.closest("button");
+        if (!button || !isCreatePullRequestButton(button)) return;
+
+        console.log("**** Create pull request button clicked");
+        schedulePullRequestFormUpdates();
+    }, true);
 
     function watchForComparePullRequestLinks() {
         if (!document.body) {
@@ -106,6 +225,10 @@
         const observer = new MutationObserver((mutations) => {
             console.log(`**** MutationObserver triggered (${mutations.length} mutations)`);
             updateComparePullRequestLinks();
+
+            if (lastTitleBranchName) {
+                schedulePullRequestFormUpdates();
+            }
         });
 
         observer.observe(document.body, {
